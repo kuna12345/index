@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body {
+            background-color: #333;
+            font-family: Arial, sans-serif;
+        }
+
+        .header {
+            padding: 40px;
+            color: black;
+            margin: 0 auto 40px;
+            text-align: center;
+            background: linear-gradient(to right, #4caf50, #81c784);
+            border-radius: 8px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .header h1, p {
+            margin: 0;
+        }
+
+        .wheel {
+            display: flex;
+            justify-content: center;
+            position: relative;
+        }
+
+        .center-circle {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            background-color: #fff;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            cursor: pointer;
+        }
+
+        .triangle {
+            width: 0;
+            height: 0;
+            border-top: 10px solid transparent;
+            border-bottom: 10px solid transparent;
+            border-right: 30px solid #333;
+            position: absolute;
+            top: 50%;
+            left: -15px;
+            transform: translateY(-50%);
+        }
+
+        textarea {
+            background-color: rgba(20, 20, 20, 0.2);
+            caret-color: #fff;
+            resize: none;
+            color: #fff;
+            padding: 10px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header">
+        <h1>WINNER</h1>
+        <p id="winner"></p>
+    </div>
+    <div class="wheel">
+        <canvas id="canvas" width="500" height="500"></canvas>
+        <div class="center-circle" onclick="spin()">
+            <div class="triangle"></div>
+        </div>
+    </div>
+    <center>
+        <textarea rows="5" cols="30" oninput="createWheel()" placeholder="wprowadź wartości (każda w nowej lini)"></textarea>
+    </center>
+
+    <script>
+        const canvas = document.getElementById("canvas");
+        const ctx = canvas.getContext("2d");
+        const centerX = canvas.width / 2;
+        const centerY = canvas.height / 2;
+        const radius = canvas.width / 2;
+
+        let items = ["EMPTY"];
+        let colors = [];
+        let itemDegs = {};
+        let currentDeg = 0;
+        let speed = 0;
+        let maxRotation = 0;
+        let isSpinning = false;
+
+        function randomColor() {
+            const r = Math.floor(Math.random() * 255);
+            const g = Math.floor(Math.random() * 255);
+            const b = Math.floor(Math.random() * 255);
+            return { r, g, b };
+        }
+
+        function toRad(deg) {
+            return deg * (Math.PI / 180);
+        }
+
+        function easeOutSine(x) {
+            return Math.sin((x * Math.PI) / 2);
+        }
+
+        function createWheel() {
+            const input = document.querySelector("textarea").value.trim();
+            items = input ? input.split("\n") : [""];
+            const step = 360 / items.length;
+
+            colors = items.map(() => randomColor());
+
+            draw();
+        }
+
+        function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, radius, 0, toRad(360));
+    ctx.fillStyle = "#222";
+    ctx.fill();
+
+    const step = 360 / items.length;
+    let startDeg = currentDeg % 360;
+
+    itemDegs = {};
+    for (let i = 0; i < items.length; i++) {
+        const endDeg = startDeg + step;
+
+        const color = colors[i];
+        const sliceColor = `rgb(${color.r}, ${color.g}, ${color.b})`;
+
+        ctx.beginPath();
+        ctx.moveTo(centerX, centerY);
+        ctx.arc(centerX, centerY, radius, toRad(startDeg), toRad(endDeg));
+        ctx.fillStyle = sliceColor;
+        ctx.fill();
+
+        ctx.save();
+        ctx.translate(centerX, centerY);
+        ctx.rotate(toRad((startDeg + endDeg) / 2));
+        ctx.textAlign = "center";
+        ctx.fillStyle = "#fff";
+        ctx.font = "16px Arial";
+        ctx.fillText(items[i], radius / 2, 10);
+        ctx.restore();
+
+        itemDegs[items[i]] = { startDeg: startDeg % 360, endDeg: endDeg % 360 };
+        startDeg = endDeg;
+    }
+
+
+    const normalizedDeg = (currentDeg % 360 + 360) % 360;
+    let winner = "winner";
+
+    for (const item in itemDegs) {
+        const { startDeg, endDeg } = itemDegs[item];
+        if (normalizedDeg >= startDeg && normalizedDeg < endDeg) {
+            winner = item;
+            break;
+        }
+    }
+
+    document.getElementById("winner").innerText = winner;
+}
+
+        function spin() {
+            if (isSpinning) return;
+
+            isSpinning = true;
+            const spins = Math.floor(Math.random() * 3) + 3;
+            const randomItem = items[Math.floor(Math.random() * items.length)];
+            const targetDeg = itemDegs[randomItem].startDeg + 360 * spins;
+
+            maxRotation = targetDeg;
+            speed = 20;
+            animate();
+        }
+
+        function animate() {
+            if (speed <= 0.1) {
+                isSpinning = false;
+                speed = 0;
+                return;
+            }
+
+            currentDeg += speed;
+            speed *= 0.98;
+
+            draw();
+            requestAnimationFrame(animate);
+        }
+
+        createWheel();
+    </script>
+</body>
+</html>
